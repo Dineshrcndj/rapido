@@ -1,4 +1,4 @@
-from flask import Flask,render_template,redirect,url_for,send_file,flash
+from flask import Flask,render_template,redirect,url_for,send_file,flash,request
 from flask_session import Session
 import mysql.connector
 
@@ -70,12 +70,33 @@ def notactive(center_name):
     cursor.execute('delete from submissions where center_name=%s',[center_name])
     return redirect(url_for('dashboard'))
 
-@app.route('/admin')
+@app.route('/admin',methods=['GET','POST'])
 def admin():
+    if request.method=='POST':
+        centername=request.form['centername']
+        area=request.form['areaname']
+        cursor=mydb.cursor()
+        cursor.execute('select count(center_name) from centers where center_name=%s',[centername])
+        count=cursor.fetchone()[0]
+        if count==0:
+            cursor.execute('insert into centers(center_name,area) values(%s,%s)',[centername,area])
+            mydb.commit()
+            flash(f'{centername} added successfully to centers')
+            return redirect(url_for('admin'))
+        else:
+            flash(f'{centername} already exists centers')
+            return redirect(url_for('admin'))
     cursor=mydb.cursor()
-    cursor.execute('select * from centers')
+    cursor.execute('select * from centers order by area')
     center_data=cursor.fetchall()
     return render_template('admin.html',center_data=center_data)
 
-
+@app.route('/login',methods=['GET','POST'])
+def login():
+    if request.method=='POST':
+        username1=request.form['username']
+        password1=request.form['password']
+        if username1=='dinesh'and password1=='admin':
+            return redirect(url_for('admin'))
+    return render_template('login.html')
 app.run(use_reloader=True,debug=True)
